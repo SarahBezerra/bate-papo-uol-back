@@ -29,6 +29,7 @@ app.post('/participants', async (req, res) => {
 
         if(await collection.findOne({ name: req.body.name })){
             res.status(409).send("Participante já existe");
+            mongoClient.close();
             return
         }
 
@@ -38,8 +39,8 @@ app.post('/participants', async (req, res) => {
         }
 
         const participant = await collection.insertOne(participantData);
-
         res.sendStatus(201);
+        mongoClient.close();
     }
     catch(error) {
         res.status(500).send(error);
@@ -47,8 +48,19 @@ app.post('/participants', async (req, res) => {
 });
 
 
-app.get('/participants', (req, res) => {
+app.get('/participants', async (req, res) => {
+    try {
+        const mongoClient = new MongoClient(process.env.MONGO_URI);
+        await mongoClient.connect();
 
+        const participants = await mongoClient.db("batepapouol").collection("participants").find({}).toArray();
+
+        res.send(participants);
+        mongoClient.close();
+    }
+    catch(error) {
+        res.status(500).send(error);
+    }
 });
 
 

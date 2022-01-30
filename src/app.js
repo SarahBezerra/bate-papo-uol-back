@@ -101,8 +101,31 @@ app.post('/messages', async (req, res) => {
 });
 
 
-app.get('/messages', (req, res) => {
+app.get('/messages', async (req, res) => {
+    const limit = parseInt(req.query.limit);
+    const from  = req.headers.user;
 
+    try {
+        const mongoClient = new MongoClient(process.env.MONGO_URI);
+        await mongoClient.connect();
+
+        const allMessages = await mongoClient.db("batepapouol").collection("messages").find({}).toArray();
+
+        const filteredMessages = allMessages.filter(message => (message.to === "Todos" || message.to === from || message.from === from))
+
+        if(limit){
+            const messageLimit = filteredMessages.slice(-(limit), filteredMessages.length);
+            res.send(messageLimit);
+            mongoClient.close();
+            return
+        }
+
+        res.send(filteredMessages);
+        mongoClient.close();
+    }
+    catch(error) {
+        res.status(500).send(error);
+    }
 });
 
 

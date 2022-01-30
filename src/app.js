@@ -1,25 +1,49 @@
+import dotenv from 'dotenv';
 import express from 'express';
+import { MongoClient } from 'mongodb';
 import cors from 'cors';
 import joi from 'joi';
-//dotenv
 
 const app = express();
 app.use(express.json());
 app.use(cors());
+dotenv.config();
 
 const nameSchema = joi.object({
     name: joi.string().required()
 })
 
-app.post('/participants', (req, res) => {
+
+app.post('/participants', async (req, res) => {
     const validation = nameSchema.validate(req.body);
     if(validation.error){
         res.status(422).send(validation.error.details[0].message);
         return;
     }
 
-    res.sendStatus(201)
+    try {
+        const mongoClient = new MongoClient(process.env.MONGO_URI);
+        await mongoClient.connect();
 
+        const collection = mongoClient.db("batepapouol").collection("participants");
+
+        if(await collection.findOne({ name: req.body.name })){
+            res.status(409).send("Participante já existe");
+            return
+        }
+
+        const participantData = {
+            name: req.body.name,
+            lastStatus: Date.now()
+        }
+
+        const participant = await collection.insertOne(participantData);
+
+        res.sendStatus(201);
+    }
+    catch(error) {
+        res.status(500).send(error);
+    }
 });
 
 

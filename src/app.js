@@ -10,6 +10,33 @@ app.use(express.json());
 app.use(cors());
 dotenv.config();
 
+setInterval(async () => {
+    try {
+        const mongoClient = new MongoClient(process.env.MONGO_URI);
+        await mongoClient.connect();
+
+        const participantsCollection = mongoClient.db("batepapouol").collection("participants");
+        const  participants = await participantsCollection.find({}).toArray();
+
+        const messagesCollection = mongoClient.db("batepapouol").collection("messages");
+
+        for(let i=0; i<participants.length; i++){
+            if(Date.now() - participants[i].lastStatus > 10000){
+                const message = {from: participants[i].name, to: 'Todos', text: 'sai da sala...', type: 'status', time: Date.now()}
+                await messagesCollection.insertOne(message)
+
+                const id = participants[i]._id;
+                await participantsCollection.deleteOne({_id: id});
+            }
+        }
+        
+        mongoClient.close();
+        
+    } catch(error) {
+        console.log(error);
+    }
+}, 15000)
+
 const nameSchema = joi.object({
     name: joi.string().required()
 })
@@ -32,9 +59,9 @@ app.post('/participants', async (req, res) => {
         const mongoClient = new MongoClient(process.env.MONGO_URI);
         await mongoClient.connect();
 
-        const collection = mongoClient.db("batepapouol").collection("participants");
+        const participants = mongoClient.db("batepapouol").collection("participants");
 
-        if(await collection.findOne({ name: req.body.name })){
+        if(await participants.findOne({ name: req.body.name })){
             res.status(409).send("Participante já existe");
             mongoClient.close();
             return
@@ -45,7 +72,7 @@ app.post('/participants', async (req, res) => {
             lastStatus: Date.now()
         }
 
-        const participant = await collection.insertOne(participantData);
+        const participant = await participants.insertOne(participantData);
         res.sendStatus(201);
         mongoClient.close();
     }

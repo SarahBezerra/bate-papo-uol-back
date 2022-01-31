@@ -29,7 +29,7 @@ setInterval(async () => {
                 await participantsCollection.deleteOne({_id: id});
             }
         }
-        
+
         mongoClient.close();
         
     } catch(error) {
@@ -72,7 +72,7 @@ app.post('/participants', async (req, res) => {
             lastStatus: Date.now()
         }
 
-        const participant = await participants.insertOne(participantData);
+        await participants.insertOne(participantData);
         res.sendStatus(201);
         mongoClient.close();
     }
@@ -156,8 +156,28 @@ app.get('/messages', async (req, res) => {
 });
 
 
-app.post('/status', (req, res) => {
+app.post('/status', async (req, res) => {
+    const name = req.headers.user;
 
+    try {
+        const mongoClient = new MongoClient(process.env.MONGO_URI);
+        await mongoClient.connect();
+
+        const participants = mongoClient.db("batepapouol").collection("participants");
+
+        if(!await participants.findOne({ name })){
+            res.sendStatus(404);
+            mongoClient.close();
+            return
+        }
+
+        await participants.updateOne({ name: name }, { $set: { lastStatus: Date.now() } })
+        res.sendStatus(200);
+        mongoClient.close();
+    }
+    catch (error) {
+        res.status(500).send(error);
+    }
 });
 
 

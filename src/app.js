@@ -16,13 +16,18 @@ setInterval(async () => {
         await mongoClient.connect();
 
         const participantsCollection = mongoClient.db("batepapouol").collection("participants");
-        const  participants = await participantsCollection.find({}).toArray();
+        const participants = await participantsCollection.find({}).toArray();
 
         const messagesCollection = mongoClient.db("batepapouol").collection("messages");
 
         for(let i=0; i<participants.length; i++){
             if(Date.now() - participants[i].lastStatus > 10000){
-                const message = {from: participants[i].name, to: 'Todos', text: 'sai da sala...', type: 'status', time: Date.now()}
+                const message = {
+                    from: participants[i].name, 
+                    to: 'Todos', 
+                    text: 'saiu da sala...', 
+                    type: 'status', 
+                    time: Date.now()}
                 await messagesCollection.insertOne(message)
 
                 const id = participants[i]._id;
@@ -60,6 +65,7 @@ app.post('/participants', async (req, res) => {
         await mongoClient.connect();
 
         const participants = mongoClient.db("batepapouol").collection("participants");
+        const messages = mongoClient.db("batepapouol").collection("messages");
 
         if(await participants.findOne({ name: req.body.name })){
             res.status(409).send("Participante já existe");
@@ -73,6 +79,16 @@ app.post('/participants', async (req, res) => {
         }
 
         await participants.insertOne(participantData);
+
+        const statusMessage = {
+            from: req.body.name, 
+            to: 'Todos', 
+            text: 'entrou na sala...', 
+            type: 'status', 
+            time: Date.now()
+        }
+        await messages.insertOne(statusMessage);
+
         res.sendStatus(201);
         mongoClient.close();
     }

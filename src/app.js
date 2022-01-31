@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 import express from 'express';
-import { MongoClient } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 import cors from 'cors';
 import joi from 'joi';
 import dayjs from 'dayjs';
@@ -188,30 +188,30 @@ app.delete('/messages/:id_da_mensagem', async (req, res) => {
         const mongoClient = new MongoClient(process.env.MONGO_URI);
         await mongoClient.connect();
 
-        const messages = mongoClient.db("batepapouol").collection("messages");
+        const messages =  mongoClient.db("batepapouol").collection("messages");
 
-        // buscar em messages se existe o id informado
-        const message = await messages.findOne({ _id: new ObjectId(id) });
+        const message = await messages.findOne({ _id: new ObjectId(id) })
 
         if(!message){
             res.sendStatus(404);
             mongoClient.close();
             return
         }
-    
-        // verificar se o 'from" da mensagem encontrada é igual ao "name" informado
-        if(!message.from === name){
+
+        if(message.from !== name){
             res.sendStatus(401);
             mongoClient.close();
             return
         }
 
-        // remover mensagem
         await messages.deleteOne({ _id: new ObjectId(id) });
+
+        res.sendStatus(200);
         mongoClient.close()
     }
     catch(error) {
         res.status(500).send(error);
+        console.log(error)
     }
 
 })
